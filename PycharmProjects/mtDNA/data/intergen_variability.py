@@ -47,5 +47,4 @@ for gb in list_gb_files:
     #         len_indv_int_feat[rec.qualifiers['name']][gb] = len(rec)
 
 print(len_indv_int_feat)
-#read up on alignment, N/C terminus tagging etc, mt transport
 

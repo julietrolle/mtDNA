@@ -393,7 +393,6 @@ for feature in top_len_chars_list:
         continue
 
 #parses thru to find shortest intergenic region
-
 file_len.write("\nIntergenic")
 
 for i in all_intergen_chars_dict['KP263414']:
@@ -474,11 +473,103 @@ output_handle = open("final_mito_len.gb",'w')
 SeqIO.write(final_record_len, output_handle,'genbank') #SeqRecord
 output_handle.close()
 
-#NB: lots of repeating variable names
+#parsing thru to find highest GC content
+top_GC_features_list = []
+top_GC_intergenic_features_list = []
+problem = open("GC_problem.txt", 'w')
+file = open("GC_stats.txt", 'w')
 
-final_record_len = SeqRecord('')
-final_len = ''
-final_list_len = []
+for i in all_gene_chars_dict['KP263414']:
+    GC_top_seq = 0
+    for k, v in all_gene_chars_dict.items():
+        try:
+            current_seq = GC(all_gene_chars_dict[k][i].seq)
+            if current_seq > GC_top_seq:
+                GC_top_seq = current_seq
+                top_GC_record = all_gene_chars_dict[k][i]
+
+        except KeyError:
+            problem.write("\n" + str(v) + "KeyError-feature")
+            continue
+
+    top_GC_features_list.append(top_GC_record)
+    file.write("\n" + str(top_GC_record) + " " + str(GC(top_GC_record.seq)))
+
+file.write("\nIntergenic")
+for i in all_intergen_chars_dict['KP263414']:
+    GC_top_seq_int = 0
+    for k, v in all_intergen_chars_dict.items():
+        try:
+            current_seq_int = GC(all_intergen_chars_dict[k][i].seq)
+            if current_seq_int > GC_top_seq_int:
+                GC_top_seq_int = current_seq_int
+                top_GC_record_int = all_intergen_chars_dict[k][i]
+
+        except KeyError:
+            problem.write("\n" + str(v) + "KeyError-intergenic")
+            continue
+
+    top_GC_intergenic_features_list.append(top_GC_record_int)
+    file.write("\n" + str(top_GC_record_int) + " " + str(GC(top_GC_record_int.seq)))
+
+file.close()
+problem.close()
+
+final_record_GC = SeqRecord('')
+final_GC = ''
+final_list_GC = []
+
+for i in range(len(top_GC_features_list)):
+    diction = {}
+    diction_intergenic = {}
+    seq_feature_list = []
+    seq_intergenic_feature_list = []
+
+    record_gene = str(top_GC_features_list[i].seq)
+    record_gene = Seq(record_gene, IUPAC.unambiguous_dna)
+    name_gene = str("gene " + str(i))
+    diction['note'] = [name_gene]
+    genome_name = str(top_GC_features_list[i].genome_name)
+    diction['genome_name'] = [genome_name]
+    diction['product'] = top_GC_features_list[i].name
+    diction['locus_tag'] = top_GC_features_list[i].name
+
+    seq_feature = SeqFeature(FeatureLocation(0, len(top_GC_features_list[i].seq)), type=top_GC_features_list[i].type,
+                             id=str(top_GC_features_list[i].name) + "-" + str(top_GC_features_list[i].genome_name),
+                             qualifiers=diction)
+    seq_feature_list.append(seq_feature)
+    seq_record_gene = SeqRecord(record_gene, id='SC2mitoV2.1', name=name_gene,
+                                description="Redesign of Saccharomyces cerevisiae mitochondrial genome using 100 yeast genomes resource",
+                                features=seq_feature_list)
+    final_list_GC.append(seq_record_gene)
+
+    record_intergenic = str(top_GC_intergenic_features_list[i].seq)
+    record_intergenic = Seq(record_intergenic, IUPAC.unambiguous_dna)
+    name_intergenic = str("intergenic " + str(i))
+    diction_intergenic['note'] = [name_intergenic]
+    genome_name_intergenic = str(top_GC_intergenic_features_list[i].genome_name)
+    diction_intergenic['genome_name'] = [genome_name_intergenic]
+    diction_intergenic['locus_tag'] = top_GC_intergenic_features_list[i].name
+
+    seq_feature_intergenic = SeqFeature(FeatureLocation(0, len(top_GC_intergenic_features_list[i].seq)),
+                                        type="intergenic", id=str(top_GC_intergenic_features_list[i].name) + "-" + str(
+            top_GC_intergenic_features_list[i].genome_name), qualifiers=diction_intergenic)
+    seq_intergenic_feature_list.append(seq_feature_intergenic)
+    seq_record_intergenic = SeqRecord(record_intergenic, id='SC2mitoV2.1', name=name_intergenic,
+                                      description="Redesign of Saccharomyces cerevisiae mitochondrial genome using 100 yeast genomes resource",
+                                      features=seq_intergenic_feature_list)
+    final_list_GC.append(seq_record_intergenic)
+    final_GC = final_GC + record_gene + record_intergenic
+    final_record_GC = final_record_GC + seq_record_gene + seq_record_intergenic
+
+output_handle = open("final_mito_gc.gb", 'w')
+SeqIO.write(final_record_GC, output_handle, 'genbank')
+output_handle.close()
+
+#recoding CDS
+final_record_len_recode = SeqRecord('')
+final_len_recode = ''
+final_list_len_recode = []
 
 for i in range(len(top_len_chars_list)):
     diction_len = {}
@@ -502,7 +593,7 @@ for i in range(len(top_len_chars_list)):
     seq_record_gene = SeqRecord(gene_record, id='SC2mitoV2.1', name=name_gene,
                                 description="Redesign of Saccharomyces cerevisiae mitochondrial genome using 100 yeast genomes resource",
                                 features=seq_feature_list_len)
-    final_list_len.append(seq_record_gene)
+    final_list_len_recode.append(seq_record_gene)
 
     record_intergenic = str(top_len_intergenic_chars_list[i].seq)
     record_intergenic = Seq(record_intergenic, IUPAC.unambiguous_dna) #makes a seq object out of each intergen feat
@@ -523,13 +614,69 @@ for i in range(len(top_len_chars_list)):
     seq_record_intergenic = SeqRecord(record_intergenic, id='SC2mitoV2.1', name=name_intergenic,
                                       description="Redesign of Saccharomyces cerevisiae mitochondrial genome using 100 yeast genomes resource",
                                       features=seq_intergenic_feature_list_len)
-    final_list_len.append(seq_record_intergenic)
-    final_len = final_len + gene_record + record_intergenic #str
-    final_record_len = final_record_len + seq_record_gene + seq_record_intergenic #seqRec
+    final_list_len_recode.append(seq_record_intergenic)
+    final_len_recode = final_len_recode + gene_record + record_intergenic #str
+    final_record_len_recode = final_record_len_recode + seq_record_gene + seq_record_intergenic #seqRec
 
 output_handle = open("recoded_final_mito_len.gb",'w')
-SeqIO.write(final_record_len, output_handle,'genbank') #SeqRecord
+SeqIO.write(final_record_len_recode, output_handle,'genbank') #SeqRecord
 output_handle.close()
+
+final_record_GC_recode = SeqRecord('')
+final_GC_recode = ''
+final_list_GC_recode = []
+
+for i in range(len(top_GC_features_list)):
+    diction = {}
+    diction_intergenic = {}
+    seq_feature_list = []
+    seq_intergenic_feature_list = []
+
+    record_gene = str(recoded_top_len_chars_list[i])
+    record_gene = Seq(record_gene, IUPAC.unambiguous_dna)
+    name_gene = str("gene " + str(i))
+    diction['note'] = [name_gene]
+    genome_name = str(top_GC_features_list[i].genome_name)
+    diction['genome_name'] = [genome_name]
+    diction['product'] = top_GC_features_list[i].name
+    diction['locus_tag'] = top_GC_features_list[i].name
+
+    seq_feature = SeqFeature(FeatureLocation(0, len(top_GC_features_list[i].seq)), type=top_GC_features_list[i].type,
+                             id=str(top_GC_features_list[i].name) + "-" + str(top_GC_features_list[i].genome_name),
+                             qualifiers=diction)
+    seq_feature_list.append(seq_feature)
+    seq_record_gene = SeqRecord(record_gene, id='SC2mitoV2.1', name=name_gene,
+                                description="Redesign of Saccharomyces cerevisiae mitochondrial genome using 100 yeast genomes resource",
+                                features=seq_feature_list)
+    final_list_GC_recode.append(seq_record_gene)
+
+    record_intergenic = str(top_GC_intergenic_features_list[i].seq)
+    record_intergenic = Seq(record_intergenic, IUPAC.unambiguous_dna)
+    name_intergenic = str("intergenic " + str(i))
+    diction_intergenic['note'] = [name_intergenic]
+    genome_name_intergenic = str(top_GC_intergenic_features_list[i].genome_name)
+    diction_intergenic['genome_name'] = [genome_name_intergenic]
+    diction_intergenic['locus_tag'] = top_GC_intergenic_features_list[i].name
+
+    seq_feature_intergenic = SeqFeature(FeatureLocation(0, len(top_GC_intergenic_features_list[i].seq)),
+                                        type="intergenic", id=str(top_GC_intergenic_features_list[i].name) + "-" + str(
+            top_GC_intergenic_features_list[i].genome_name), qualifiers=diction_intergenic)
+    seq_intergenic_feature_list.append(seq_feature_intergenic)
+    seq_record_intergenic = SeqRecord(record_intergenic, id='SC2mitoV2.1', name=name_intergenic,
+                                      description="Redesign of Saccharomyces cerevisiae mitochondrial genome using 100 yeast genomes resource",
+                                      features=seq_intergenic_feature_list)
+    final_list_GC_recode.append(seq_record_intergenic)
+    final_GC_recode = final_GC_recode + record_gene + record_intergenic
+    final_record_GC_recode = final_record_GC_recode + seq_record_gene + seq_record_intergenic
+
+output_handle = open("recoded_final_mito_gc.gb", 'w')
+SeqIO.write(final_record_GC_recode, output_handle, 'genbank')
+output_handle.close()
+
+print('Length/GC - final GC:', len(final_record_GC.seq), '/', GC(final_record_GC.seq))
+print('Length/GC - final GC recoded:', len(final_record_GC_recode.seq), '/', GC(final_record_GC_recode.seq))
+print('Length/GC - final len:', len(final_record_len.seq), '/', GC(final_record_len.seq))
+print('Length/GC - final len recoded:', len(final_record_len_recode.seq), '/', GC(final_record_len_recode.seq))
 
 #intergenic variability
 
@@ -544,7 +691,7 @@ for (i, f) in enumerate(han.features): #id longest intergenic features
     if record.type == 'intergenic':
         intergenic_features.append(record)
         if len(record) > 3900:
-            print(record.qualifiers['note'], len(record))
+            #print(record.qualifiers['note'], len(record))
             longest_intergenic_features.append(record)
     else:
         continue
@@ -579,5 +726,13 @@ for i in all_intergen_chars_dict['KP263414']: #Create dict with all intergenic_x
 #     SeqIO.write(seq_rec, outp_han, 'genbank')
 #     outp_han.close()
 
-#compare GC to length
+#compare GC to length / make edits to optimize
+
+
+
+
+
+
+
+
 #transcriptome annotations

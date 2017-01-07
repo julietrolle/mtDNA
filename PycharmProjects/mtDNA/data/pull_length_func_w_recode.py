@@ -7,6 +7,8 @@ from Bio.SeqRecord import SeqRecord
 from Bio.SeqFeature import SeqFeature
 from Bio.SeqFeature import FeatureLocation
 from Bio.Alphabet import IUPAC
+from Bio.Align import MultipleSeqAlignment
+from Bio import AlignIO
 
 class mtDNA_SequenceChar(object):
     'sequence features for mtDNA project CDS,tRNA, rRNA and ncRNA genes'
@@ -428,25 +430,31 @@ for i in range(len(top_len_chars_list)):
     g_record = str(top_len_chars_list[i].seq)
     gene_record = Seq(g_record, IUPAC.unambiguous_dna)
     name_gene = str("gene " + str(i))
-    diction_len['name'] = [name_gene]
+    diction_len['note'] = [name_gene]
     genome_name = str(top_len_chars_list[i].genome_name)
     diction_len['genome_name'] = [genome_name]
+    diction_len['product'] = top_len_chars_list[i].name
+    diction_len['locus_tag'] = top_len_chars_list[i].name
 
     seq_feature = SeqFeature(FeatureLocation(0, len(top_len_chars_list[i].seq)), type=top_len_chars_list[i].type,
                              id=str(top_len_chars_list[i].name) + "-" + str(top_len_chars_list[i].genome_name),
                              qualifiers=diction_len)
+
     seq_feature_list_len.append(seq_feature)
+
     seq_record_gene = SeqRecord(gene_record, id='SC2mitoV2.1', name=name_gene,
                                 description="Redesign of Saccharomyces cerevisiae mitochondrial genome using 100 yeast genomes resource",
                                 features=seq_feature_list_len)
+
     final_list_len.append(seq_record_gene)
 
     record_intergenic = str(top_len_intergenic_chars_list[i].seq)
     record_intergenic = Seq(record_intergenic, IUPAC.unambiguous_dna) #makes a seq object out of each intergen feat
     name_intergenic = str("intergenic " + str(i)) #numbers each feature
-    diction_intergenic_len['name'] = [name_intergenic]
+    diction_intergenic_len['note'] = [name_intergenic]
     genome_name_intergenic = str(top_len_intergenic_chars_list[i].genome_name)
     diction_intergenic_len['genome_name'] = [genome_name_intergenic] #how does it distinguish one feature from another? dict not Ordered
+    diction_intergenic_len['locus_tag'] = top_len_intergenic_chars_list[i].name
 
     seq_feature_intergenic = SeqFeature(FeatureLocation(0, len(top_len_intergenic_chars_list[i].seq)),
                                         type="intergenic", id=str(top_len_intergenic_chars_list[i].name) + "-" + str(
@@ -481,9 +489,11 @@ for i in range(len(top_len_chars_list)):
     g_record = str(recoded_top_len_chars_list[i])
     gene_record = Seq(g_record, IUPAC.unambiguous_dna)
     name_gene = str("gene " + str(i))
-    diction_len['name'] = [name_gene]
+    diction_len['note'] = [name_gene]
     genome_name = str(top_len_chars_list[i].genome_name)
     diction_len['genome_name'] = [genome_name]
+    diction_len['product'] = top_len_chars_list[i].name
+    diction_len['locus_tag'] = top_len_chars_list[i].name
 
     seq_feature = SeqFeature(FeatureLocation(0, len(top_len_chars_list[i].seq)), type=top_len_chars_list[i].type,
                              id=str(top_len_chars_list[i].name) + "-" + str(top_len_chars_list[i].genome_name),
@@ -497,9 +507,11 @@ for i in range(len(top_len_chars_list)):
     record_intergenic = str(top_len_intergenic_chars_list[i].seq)
     record_intergenic = Seq(record_intergenic, IUPAC.unambiguous_dna) #makes a seq object out of each intergen feat
     name_intergenic = str("intergenic " + str(i)) #numbers each feature
-    diction_intergenic_len['name'] = [name_intergenic]
+    diction_intergenic_len['note'] = [name_intergenic]
     genome_name_intergenic = str(top_len_intergenic_chars_list[i].genome_name)
     diction_intergenic_len['genome_name'] = [genome_name_intergenic] #how does it distinguish one feature from another? dict not Ordered
+    diction_intergenic_len['locus_tag'] = top_len_intergenic_chars_list[i].name
+
 
     seq_feature_intergenic = SeqFeature(FeatureLocation(0, len(top_len_intergenic_chars_list[i].seq)),
                                         type="intergenic", id=str(top_len_intergenic_chars_list[i].name) + "-" + str(
@@ -520,6 +532,52 @@ SeqIO.write(final_record_len, output_handle,'genbank') #SeqRecord
 output_handle.close()
 
 #intergenic variability
-#compare recode to COX2
+
+g = open('/Users/julietrolle/PycharmProjects/mtDNA/data/final_mito_len.gb', 'r')
+han = SeqIO.read(g, 'genbank')
+
+intergenic_features = []
+longest_intergenic_features = []
+
+for (i, f) in enumerate(han.features): #id longest intergenic features
+    record = han.features[i]
+    if record.type == 'intergenic':
+        intergenic_features.append(record)
+        if len(record) > 3900:
+            print(record.qualifiers['note'], len(record))
+            longest_intergenic_features.append(record)
+    else:
+        continue
+
+# print(longest_intergenic_features) #longest features in final mito len: 0, 5, 10, 32
+
+intergenic_0_seq = {}
+intergenic_5_seq = {}
+intergenic_10_seq = {}
+intergenic_32_seq = {}
+
+for i in all_intergen_chars_dict['KP263414']: #Create dict with all intergenic_xx
+    for k, v in all_intergen_chars_dict.items():
+        try:
+            if all_intergen_chars_dict[k][i].name == 'tRNA-Pro-15S ribosomal RNA':
+                intergenic_0_seq[k] = all_intergen_chars_dict[k][i].seq
+            if all_intergen_chars_dict[k][i].name == 'ATP6-tRNA-Glu':
+                intergenic_5_seq[k] = all_intergen_chars_dict[k][i].seq
+            if all_intergen_chars_dict[k][i].name == 'VAR1-21S ribosomal RNA':
+                intergenic_10_seq[k] = all_intergen_chars_dict[k][i].seq
+            if all_intergen_chars_dict[k][i].name == 'COX3-tRNA-Met2':
+                intergenic_32_seq[k] = all_intergen_chars_dict[k][i].seq
+        except KeyError:
+            continue
+
+# for k, v in intergenic_32_seq.items(): #create gb file for all intergenic x, edit dict.items, seqrec name and file name
+#     seq_feat_list = []
+#     seq_feat = SeqFeature(FeatureLocation(0, len(v)), type='intergenic', id=k)
+#     seq_feat_list.append(seq_feat)
+#     seq_rec = SeqRecord(v, name='intergenic_32' + '-' + str(k), features=seq_feat_list)
+#     outp_han = open('%s-intergenic_32.gb' % k, 'w')
+#     SeqIO.write(seq_rec, outp_han, 'genbank')
+#     outp_han.close()
+
 #compare GC to length
 #transcriptome annotations
